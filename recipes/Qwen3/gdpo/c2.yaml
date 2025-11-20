@@ -1,0 +1,4 @@
+vllm_mode: "colocate"
+vllm_colocation: 2
+vllm_gpu_memory_utilization: 0.3
+vllm_max_model_len: 2048

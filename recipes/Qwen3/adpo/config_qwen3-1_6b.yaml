@@ -76,3 +76,4 @@ warmup_ratio: 0.1
 wandb_project: open-r1-ADPO
 wandb_run_group: qwen3_adpo_baseline
 wandb_entity: null
+run_name: qwen3-1.7b-adpo-baseline

@@ -26,6 +26,9 @@ shuffle_dataset: false
 bf16: true
 do_eval: true
 use_vllm: true
+vllm_mode: colocate
+vllm_enable_sleep_mode: true
+vllm_gpu_memory_utilization: 0.4
 
 # GSPO / Sequence-level config
 # 设置为 sequence 级别，使用句子概率

@@ -8,8 +8,8 @@ attn_implementation: flash_attention_2
 dataset_name: watermelonhjg/MATH-lighteval-level_3
 dataset_config: default
 dataset_prompt_column: problem
-dataset_train_split: train[:8000]
-dataset_test_split: validation[:1000]
+dataset_train_split: train
+dataset_test_split: validation
 system_prompt: |
   You are a helpful AI Assistant that provides well-reasoned and detailed responses.
   First think about the reasoning process as an internal monologue and then provide the user with the answer.

@@ -22,27 +22,26 @@ system_prompt: |
   </answer>
 shuffle_dataset: false
 
-# GRPO trainer config (Baseline)
+# ADPO trainer config (Server mode)
+anchor_update_mode: on_policy
+beta_anchor_kl: 0
 bf16: true
 do_eval: true
+tau: 0.8
+beta_reward: 0.5
+use_q_centering: true
+use_adaptive_tau: true
+adaptive_tau_alpha: 1.0
+adaptive_tau_min: 0.1
 use_vllm: true
-vllm_mode: colocate
-vllm_enable_sleep_mode: true
-vllm_gpu_memory_utilization: 0.4
-
-# GSPO / Sequence-level config
-# 设置为 sequence 级别，使用句子概率
-importance_sampling_level: sequence
-
-# 关键点：beta=0 关闭 KL 惩罚，纯靠 Clipping
-beta: 0.0
-epsilon: 0.2
+vllm_mode: server
+vllm_server_base_url: http://127.0.0.1:8000
 
 gradient_accumulation_steps: 16
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
-hub_model_id: Qwen3-1.7B-Open-R1-GRPO-Baseline
+hub_model_id: Qwen3-1.7B-Open-R1-ADPO-Server
 hub_strategy: every_save
 learning_rate: 1.5e-05
 log_completions: true
@@ -57,7 +56,7 @@ max_steps: -1
 num_generations: 8
 num_train_epochs: 2
 dataloader_drop_last: true
-output_dir: data/Qwen3-1.7B-Open-R1-GRPO-Baseline
+output_dir: data/Qwen3-1.7B-Open-R1-ADPO-Server
 overwrite_output_dir: true
 per_device_eval_batch_size: 8
 per_device_train_batch_size: 8
@@ -75,6 +74,6 @@ warmup_ratio: 0.1
 
 # WandB logging
 wandb_project: open-r1-ADPO
-wandb_run_group: qwen3_grpo_baseline
+wandb_run_group: qwen3_adpo_server
 wandb_entity: null
-run_name: qwen3-1.7b-grpo-baseline
+run_name: qwen3-1.7b-adpo-server

@@ -72,7 +72,20 @@ def main(script_args, training_args, model_args):
         init_wandb_training(training_args)
 
     # Load the dataset
-    dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
+    train_dataset = load_dataset(
+        script_args.dataset_name,
+        name=script_args.dataset_config,
+        split=script_args.dataset_train_split,
+    )
+    eval_dataset = (
+        load_dataset(
+            script_args.dataset_name,
+            name=script_args.dataset_config,
+            split=script_args.dataset_test_split,
+        )
+        if training_args.eval_strategy != "no"
+        else None
+    )
 
     ################
     # Load tokenizer
@@ -101,11 +114,15 @@ def main(script_args, training_args, model_args):
         prompt.append({"role": "user", "content": example[prompt_column]})
         return {"prompt": prompt}
 
-    dataset = dataset.map(make_conversation)
+    train_dataset = train_dataset.map(make_conversation)
+    if eval_dataset is not None:
+        eval_dataset = eval_dataset.map(make_conversation)
 
-    for split in dataset:
-        if "messages" in dataset[split].column_names:
-            dataset[split] = dataset[split].remove_columns("messages")
+    # Some public math datasets use a "messages" column which we remove to avoid conflicts
+    if "messages" in train_dataset.column_names:
+        train_dataset = train_dataset.remove_columns("messages")
+    if eval_dataset is not None and "messages" in eval_dataset.column_names:
+        eval_dataset = eval_dataset.remove_columns("messages")
 
     #############################
     # Initialize the GRPO trainer
@@ -114,8 +131,8 @@ def main(script_args, training_args, model_args):
         model=model,
         reward_funcs=reward_funcs,
         args=training_args,
-        train_dataset=dataset[script_args.dataset_train_split],
-        eval_dataset=dataset[script_args.dataset_test_split] if training_args.eval_strategy != "no" else None,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
         peft_config=get_peft_config(model_args),
         callbacks=get_callbacks(training_args, model_args),
         processing_class=tokenizer,
@@ -132,7 +149,7 @@ def main(script_args, training_args, model_args):
         checkpoint = last_checkpoint
     train_result = trainer.train(resume_from_checkpoint=checkpoint)
     metrics = train_result.metrics
-    metrics["train_samples"] = len(dataset[script_args.dataset_train_split])
+    metrics["train_samples"] = len(train_dataset)
     trainer.log_metrics("train", metrics)
     trainer.save_metrics("train", metrics)
     trainer.save_state()
@@ -158,10 +175,10 @@ def main(script_args, training_args, model_args):
     ##########
     # Evaluate
     ##########
-    if training_args.do_eval:
+    if training_args.do_eval and eval_dataset is not None:
         logger.info("*** Evaluate ***")
         metrics = trainer.evaluate()
-        metrics["eval_samples"] = len(dataset[script_args.dataset_test_split])
+        metrics["eval_samples"] = len(eval_dataset)
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
 

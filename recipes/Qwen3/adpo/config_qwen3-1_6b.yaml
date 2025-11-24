@@ -31,7 +31,7 @@ tau: 0.8
 beta_reward: 0.8
 use_q_centering: true
 use_adaptive_tau: true
-adaptive_tau_alpha: 1.0
+adaptive_tau_alpha: 0.7
 adaptive_tau_min: 0.3
 use_vllm: true
 vllm_mode: colocate

@@ -20,11 +20,12 @@ system_prompt: |
   <answer>
   ...
   </answer>
-shuffle_dataset: false
+shuffle_dataset: true
 
 # GRPO trainer config (Server mode)
 bf16: true
 do_eval: true
+drop_all_failed_prompts: true
 use_vllm: true
 vllm_mode: server
 vllm_server_base_url: http://127.0.0.1:8001
@@ -37,7 +38,11 @@ importance_sampling_level: sequence
 beta: 0.0
 epsilon: 0.2
 
-gradient_accumulation_steps: 16
+# Reward function parameters
+repetition_n_grams: 3
+repetition_max_penalty: -1.0
+
+gradient_accumulation_steps: 4
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false

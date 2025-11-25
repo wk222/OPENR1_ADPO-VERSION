@@ -25,6 +25,7 @@ shuffle_dataset: true
 # GRPO trainer config (Baseline)
 bf16: true
 do_eval: true
+drop_all_failed_prompts: true
 use_vllm: true
 vllm_mode: colocate
 vllm_enable_sleep_mode: true
@@ -37,6 +38,10 @@ importance_sampling_level: sequence
 # 关键点：beta=0 关闭 KL 惩罚，纯靠 Clipping
 beta: 0.0
 epsilon: 0.2
+
+# Reward function parameters
+repetition_n_grams: 3
+repetition_max_penalty: -1.0
 
 gradient_accumulation_steps: 4
 gradient_checkpointing: true

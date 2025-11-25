@@ -27,12 +27,17 @@ anchor_update_mode: on_policy
 beta_anchor_kl: 0
 bf16: true
 do_eval: true
+drop_all_failed_prompts: true
 tau: 1.0
 beta_reward: 0.8
 use_q_centering: true
 use_adaptive_tau: true
 adaptive_tau_alpha: 0.7
 adaptive_tau_min: 0.3
+
+# Reward function parameters
+repetition_n_grams: 3
+repetition_max_penalty: -1.0
 use_vllm: true
 vllm_mode: colocate
 vllm_enable_sleep_mode: true

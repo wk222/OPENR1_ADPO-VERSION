@@ -617,15 +617,27 @@ def get_reward_funcs(script_args) -> list[Callable]:
 def good_accuracy(
     ngram_size: int,
     max_penalty: float,
-    penalty_scale_factor: float = 0.1,
+    penalty_scale_factor: float = 0.5,
+    length_reward_scale: float = 2000.0,
+    length_reward_max: float = 0.1,
+    repetition_threshold: float = 0.3,
+    repetition_threshold_penalty: float = -0.5,
     **kwargs
 ):
     """
     改进的奖励函数：
     1. 正确 = 1.0
-    2. 错误 = 0.0 + 有界的长度奖励 (防止闭嘴) + 重复性惩罚 (防止废话)
-    3. 当重复度达到一定阈值的时候，直接给个大惩罚
-    4. 如果一个prompt下所有回答都一样时，给一个大的惩罚
+    2. 错误 = 有界的长度奖励 (防止闭嘴) + 重复性惩罚 (防止废话)
+    3. 当重复度达到一定阈值的时候，直接给个固定惩罚
+    
+    Args:
+        ngram_size: N-gram 大小，用于计算重复度
+        max_penalty: 最大惩罚值（负数）
+        penalty_scale_factor: 重复惩罚的缩放因子
+        length_reward_scale: 长度奖励的缩放因子（多少字符得满分）
+        length_reward_max: 长度奖励的上限
+        repetition_threshold: 重复度阈值，超过此值直接给大惩罚
+        repetition_threshold_penalty: 超过阈值时的固定惩罚值
     """
     completions = kwargs.get("completions", [])
     solution = kwargs.get("solution", [])
@@ -637,20 +649,10 @@ def good_accuracy(
     try:
         contents = [comp[0]["content"] for comp in completions]
     except (TypeError, IndexError, KeyError):
-         contents = completions # 假设已经是 str 列表
-
-    # 4. 检查 Mode Collapse (所有回答完全一致)
-    # 给一个大的惩罚 (例如 2倍 max_penalty 或固定 -2.0)
-    all_same_penalty = 0.0
-    if len(contents) > 1 and len(set(contents)) == 1:
-        all_same_penalty = max_penalty * 2.0 if max_penalty < 0 else -2.0
+        contents = completions  # 假设已经是 str 列表
 
     rewards = []
     for content, sol in zip(contents, solution):
-        if all_same_penalty != 0.0:
-            rewards.append(float(all_same_penalty))
-            continue
-
         # 1. 检查正确性 (复用 accuracy_reward 的逻辑)
         is_correct = False
         try:
@@ -661,7 +663,7 @@ def good_accuracy(
                     extraction_config=[
                         LatexExtractionConfig(
                             normalization_config=NormalizationConfig(
-                                 nits=False, malformed_operators=False, basic_latex=True,
+                                nits=False, malformed_operators=False, basic_latex=True,
                                 equations=True, boxed="all", units=True
                             ),
                             boxed_match_priority=0, try_extract_without_anchor=False
@@ -671,26 +673,24 @@ def good_accuracy(
                 )
                 is_correct = verify(answer_parsed, gold_parsed)
             else:
-                # 如果无法解析 ground truth，为安全起见跳过 (或给1.0)
-                is_correct = True # 这里选择视为正确以免误杀
+                # 如果无法解析 ground truth，为安全起见视为正确以免误杀
+                is_correct = True
         except Exception:
             is_correct = False
 
         # 2. 计算奖励
-        reward = 0.0
         if is_correct:
             reward = 1.0
         else:
             # 错误时的奖励设计：
             # A. 软长度奖励 (Soft Length Reward): 鼓励多写，但有上限
-            # 例如：每100字符给0.02分，上限0.2分
-            length_score = min(len(content) / 1000.0, 0.2)
+            length_score = min(len(content) / length_reward_scale, length_reward_max)
             
             # B. 重复性惩罚 (Repetition Penalty): 防止为了骗长度分而复读
             repetition_penalty = 0.0
             hit_repetition_threshold = False
             
-            if max_penalty < 0: # 只有当设置了惩罚时才计算
+            if max_penalty < 0:  # 只有当设置了惩罚时才计算
                 words = content.lower().split()
                 if len(words) >= ngram_size:
                     ngrams = set()
@@ -705,19 +705,16 @@ def good_accuracy(
                         ratio = len(ngrams) / total
                         scaling = 1.0 - ratio
                         
-                        # 3. 重复度阈值检查
-                        # 如果重复度超过阈值 (例如 scaling > 0.3, 即 30% 的 ngram 是重复的)
-                        if scaling > 0.3:
-                            repetition_penalty = max_penalty # 直接给大惩罚
+                        # 重复度阈值检查
+                        if scaling > repetition_threshold:
                             hit_repetition_threshold = True
                         else:
                             repetition_penalty = scaling * max_penalty
 
             if hit_repetition_threshold:
-                reward = repetition_penalty # 直接使用惩罚，忽略长度奖励
+                reward = repetition_threshold_penalty  # 使用固定惩罚值
             else:
-                reward += length_score
-                reward += repetition_penalty * penalty_scale_factor
+                reward = length_score + repetition_penalty * penalty_scale_factor
 
         rewards.append(float(reward))
 

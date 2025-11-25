@@ -20,7 +20,7 @@ system_prompt: |
   <answer>
   ...
   </answer>
-shuffle_dataset: false
+shuffle_dataset: true
 
 # GRPO trainer config (Baseline)
 bf16: true
@@ -38,7 +38,7 @@ importance_sampling_level: sequence
 beta: 0.0
 epsilon: 0.2
 
-gradient_accumulation_steps: 16
+gradient_accumulation_steps: 4
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
@@ -52,7 +52,7 @@ logging_steps: 1
 logging_strategy: steps
 lr_scheduler_type: cosine
 max_prompt_length: 800
-max_completion_length: 1024
+max_completion_length: 1400
 max_steps: -1
 num_generations: 8
 num_train_epochs: 2
@@ -69,7 +69,7 @@ reward_funcs:
 reward_weights:
   - 1.0
 save_strategy: "epoch"
-save_total_limit: 2
+save_total_limit: 1
 seed: 42
 warmup_ratio: 0.1
 

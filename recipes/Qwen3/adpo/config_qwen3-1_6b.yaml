@@ -20,14 +20,14 @@ system_prompt: |
   <answer>
   ...
   </answer>
-shuffle_dataset: false
+shuffle_dataset: true
 
 # ADPO trainer config
 anchor_update_mode: on_policy
 beta_anchor_kl: 0
 bf16: true
 do_eval: true
-tau: 0.8
+tau: 1.0
 beta_reward: 0.8
 use_q_centering: true
 use_adaptive_tau: true
@@ -37,7 +37,7 @@ use_vllm: true
 vllm_mode: colocate
 vllm_enable_sleep_mode: true
 vllm_gpu_memory_utilization: 0.4
-gradient_accumulation_steps: 16
+gradient_accumulation_steps: 4
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
@@ -51,10 +51,10 @@ logging_steps: 1
 logging_strategy: steps
 lr_scheduler_type: cosine
 max_prompt_length: 800
-max_completion_length: 1024
+max_completion_length: 1400
 max_steps: -1
 num_generations: 8
-num_train_epochs: 4
+num_train_epochs: 2
 dataloader_drop_last: true
 output_dir: data/Qwen3-1.7B-Open-R1-ADPO
 overwrite_output_dir: true

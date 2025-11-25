@@ -614,143 +614,111 @@ def get_reward_funcs(script_args) -> list[Callable]:
 
 
 
-def is_pure_numerical(text: str) -> bool:
-    """检查字符串是否完全由一个简单的整数或小数构成。(与之前相同)"""
-    if not isinstance(text, str): return False
-    text = text.strip()
-    if not text: return False
-    pattern = r"^[+-]?(\d+(\.\d*)?|\.\d+)$"
-    return bool(re.fullmatch(pattern, text))
-
-# 注意：不再需要 extract_numerical_value_from_parsed 和 tolerance 参数了
-
 def good_accuracy(
     ngram_size: int,
     max_penalty: float,
     penalty_scale_factor: float = 0.1,
-    # tolerance 参数不再需要，因为不再直接比较浮点数
     **kwargs
 ):
     """
-    计算组合奖励 (版本：强制使用原始逻辑，纯数字答案尝试包装后处理)。
-    - **所有情况**都尝试使用原始的 parse/verify 逻辑。
-    - 如果基准答案是纯数字，会先用花括号 {} 包装后再传入 parse。
-    - **警告**: 此方法的准确性高度依赖于 parse/verify 处理包装后数字的能力，
-               以及 verify 进行跨格式数值等价比较的能力。请务必测试！
-
-    参数:
-        ngram_size: 用于计算重复惩罚的n-gram大小。
-        max_penalty: 最大的（负数）重复惩罚值。
-        penalty_scale_factor: 当答案错误时，应用于重复惩罚的缩放因子 (默认为 0.1)。
-        **kwargs: GRPOTrainer 传入的其他数据集列, 必须包含 "completions" 和 "solution"。
-
-    返回:
-        list[float]: 每个 completion 对应的奖励值列表。
+    改进的奖励函数：
+    1. 正确 = 1.0
+    2. 错误 = 0.0 + 有界的长度奖励 (防止闭嘴) + 重复性惩罚 (防止废话)
+    3. 当重复度达到一定阈值的时候，直接给个大惩罚
+    4. 如果一个prompt下所有回答都一样时，给一个大的惩罚
     """
-    if "completions" not in kwargs or "solution" not in kwargs:
-        raise ValueError("kwargs 必须包含 'completions' 和 'solution'")
+    completions = kwargs.get("completions", [])
+    solution = kwargs.get("solution", [])
 
-    completions = kwargs["completions"]
-    solution = kwargs["solution"]
+    if len(completions) != len(solution):
+        raise ValueError(f"Completions and solutions must have the same length. Got {len(completions)} and {len(solution)}")
 
-    if max_penalty > 0:
-        raise ValueError(f"max_penalty {max_penalty} 应该是负数或零")
-
-    final_rewards = []
-
-    # --- Input Format Handling (same as before) ---
+    # 获取 content
     try:
         contents = [comp[0]["content"] for comp in completions]
     except (TypeError, IndexError, KeyError):
-        if isinstance(completions, list) and all(isinstance(c, str) for c in completions):
-            contents = completions
-        else:
-            raise ValueError("无法识别 completions 的格式 (既不是 list[str] 也不是 list[list[dict]])")
-    if len(contents) != len(solution):
-        raise ValueError(f"completions ({len(contents)}) 和 solution ({len(solution)}) 的数量必须匹配")
-    # --- End Input Format Handling ---
+         contents = completions # 假设已经是 str 列表
 
-    # --- N-gram Helper (same as before) ---
-    def zipngram(text: str, n: int):
-        words = text.lower().split()
-        if len(words) < n: return []
-        return zip(*[words[i:] for i in range(n)])
-    # --- End N-gram Helper ---
+    # 4. 检查 Mode Collapse (所有回答完全一致)
+    # 给一个大的惩罚 (例如 2倍 max_penalty 或固定 -2.0)
+    all_same_penalty = 0.0
+    if len(contents) > 1 and len(set(contents)) == 1:
+        all_same_penalty = max_penalty * 2.0 if max_penalty < 0 else -2.0
 
+    rewards = []
     for content, sol in zip(contents, solution):
+        if all_same_penalty != 0.0:
+            rewards.append(float(all_same_penalty))
+            continue
+
+        # 1. 检查正确性 (复用 accuracy_reward 的逻辑)
         is_correct = False
-        processed_sol = sol # 默认使用原始 sol
-
-        # --- 核心修改：如果是纯数字，用花括号包装 ---
-        if is_pure_numerical(sol):
-            processed_sol = f"{{{sol.strip()}}}" # 例如 "0.5" -> "{0.5}"
-            print(f"Info: Wrapping numerical solution '{sol}' to '{processed_sol}' for parse/verify.") # Log a message
-        # ---------------------------------------------
-
-        # --- 统一使用原始的 parse/verify 逻辑 ---
         try:
-            # 使用 processed_sol (可能是原始的，可能是包装后的)
-            gold_parsed = parse(processed_sol, extraction_mode="first_match", extraction_config=[LatexExtractionConfig()])
-
+            gold_parsed = parse(sol, extraction_mode="first_match")
             if len(gold_parsed) != 0:
-                # 解析模型回答 (保持不变)
                 answer_parsed = parse(
                     content,
                     extraction_config=[
                         LatexExtractionConfig(
                             normalization_config=NormalizationConfig(
                                  nits=False, malformed_operators=False, basic_latex=True,
-                                 equations=True, boxed="all", units=True # 保持原始配置
+                                equations=True, boxed="all", units=True
                             ),
                             boxed_match_priority=0, try_extract_without_anchor=False
                         )
                     ],
                     extraction_mode="first_match"
                 )
-                try:
-                    # 使用原始 verify 函数进行比较
-                    is_correct = verify(answer_parsed, gold_parsed)
-                    # Optional logging for mismatch
-                    # if not is_correct: print(f"Verify failed: Answer={answer_parsed}, Gold={gold_parsed}")
-                except Exception as verify_err:
-                    print(f"验证失败 (统一逻辑): {verify_err}, 回答: {answer_parsed}, 基准: {gold_parsed} (来自: '{processed_sol}')")
-                    is_correct = False
+                is_correct = verify(answer_parsed, gold_parsed)
             else:
-                # 如果 parse(processed_sol) 失败 (包括 parse 无法处理 "{0.5}" 的情况)
-                # 则遵循原始逻辑：视为正确以跳过惩罚
-                print(f"警告 (统一逻辑): 无法解析处理后的基准答案 '{processed_sol}' (来自原始: '{sol}'), 视为正确。")
-                is_correct = True
-        except Exception as parse_err:
-            print(f"解析失败 (统一逻辑): {parse_err}, 回答: {content}, 处理后基准: {processed_sol} (来自原始: {sol})")
+                # 如果无法解析 ground truth，为安全起见跳过 (或给1.0)
+                is_correct = True # 这里选择视为正确以免误杀
+        except Exception:
             is_correct = False
-        # --- 原始逻辑结束 ---
 
-
-        # === Reward Calculation (与之前完全相同) ===
-        final_reward = 0.0
+        # 2. 计算奖励
+        reward = 0.0
         if is_correct:
-            final_reward = 1.0
+            reward = 1.0
         else:
-            # 计算重复惩罚... (逻辑同前)
+            # 错误时的奖励设计：
+            # A. 软长度奖励 (Soft Length Reward): 鼓励多写，但有上限
+            # 例如：每100字符给0.02分，上限0.2分
+            length_score = min(len(content) / 1000.0, 0.2)
+            
+            # B. 重复性惩罚 (Repetition Penalty): 防止为了骗长度分而复读
             repetition_penalty = 0.0
-            words_in_content = content.lower().split()
-            if content and len(words_in_content) >= ngram_size:
-                try:
-                    ngrams_set = set()
-                    total_ngrams = 0
-                    for ng in zip(*[words_in_content[i:] for i in range(ngram_size)]):
-                        ngrams_set.add(ng)
-                        total_ngrams += 1
-                    if total_ngrams > 0:
-                        scaling = 1.0 - (len(ngrams_set) / total_ngrams)
-                        repetition_penalty = scaling * max_penalty
-                except Exception as e:
-                    print(f"计算重复惩罚时出错: {e}")
-                    repetition_penalty = 0.0
-            final_reward = 0.0 + penalty_scale_factor * repetition_penalty
-            final_reward = min(final_reward, 0.0)
+            hit_repetition_threshold = False
+            
+            if max_penalty < 0: # 只有当设置了惩罚时才计算
+                words = content.lower().split()
+                if len(words) >= ngram_size:
+                    ngrams = set()
+                    total = 0
+                    for i in range(len(words) - ngram_size + 1):
+                        ng = tuple(words[i : i + ngram_size])
+                        ngrams.add(ng)
+                        total += 1
+                    
+                    if total > 0:
+                        # 重复率越高，ratio 越低，scaling 越高 (1.0 表示完全重复)
+                        ratio = len(ngrams) / total
+                        scaling = 1.0 - ratio
+                        
+                        # 3. 重复度阈值检查
+                        # 如果重复度超过阈值 (例如 scaling > 0.3, 即 30% 的 ngram 是重复的)
+                        if scaling > 0.3:
+                            repetition_penalty = max_penalty # 直接给大惩罚
+                            hit_repetition_threshold = True
+                        else:
+                            repetition_penalty = scaling * max_penalty
 
-        final_rewards.append(final_reward)
-        # === End Reward Calculation ===
+            if hit_repetition_threshold:
+                reward = repetition_penalty # 直接使用惩罚，忽略长度奖励
+            else:
+                reward += length_score
+                reward += repetition_penalty * penalty_scale_factor
 
-    return final_rewards
+        rewards.append(float(reward))
+
+    return rewards

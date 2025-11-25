@@ -77,6 +77,8 @@ def main(script_args, training_args, model_args):
         name=script_args.dataset_config,
         split=script_args.dataset_train_split,
     )
+    if script_args.dataset_shuffle:
+        train_dataset = train_dataset.shuffle(seed=training_args.seed)
     eval_dataset = (
         load_dataset(
             script_args.dataset_name,

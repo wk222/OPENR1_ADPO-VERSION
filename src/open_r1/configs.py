@@ -224,6 +224,11 @@ class GRPOScriptArguments(trl.ScriptArguments):
         metadata={"help": "Column to use as prompts for training."},
     )
 
+    dataset_shuffle: bool = field(
+        default=True,
+        metadata={"help": "Whether to shuffle the dataset."}
+    )
+
     e2b_router_url: Optional[str] = field(
         default=None,
         metadata={"help": "URL for the E2B route. See scripts/e2b_router.py"},

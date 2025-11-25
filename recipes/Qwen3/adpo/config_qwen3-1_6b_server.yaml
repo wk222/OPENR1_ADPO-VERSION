@@ -20,7 +20,7 @@ system_prompt: |
   <answer>
   ...
   </answer>
-shuffle_dataset: false
+shuffle_dataset: true
 
 # ADPO trainer config (Server mode)
 anchor_update_mode: on_policy
@@ -31,13 +31,13 @@ tau: 0.8
 beta_reward: 0.5
 use_q_centering: true
 use_adaptive_tau: true
-adaptive_tau_alpha: 1.0
-adaptive_tau_min: 0.1
+adaptive_tau_alpha: 0.7
+adaptive_tau_min: 0.3
 use_vllm: true
 vllm_mode: server
 vllm_server_base_url: http://127.0.0.1:8000
 
-gradient_accumulation_steps: 16
+gradient_accumulation_steps: 4
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
@@ -50,8 +50,8 @@ logging_first_step: true
 logging_steps: 1
 logging_strategy: steps
 lr_scheduler_type: cosine
-max_prompt_length: 512
-max_completion_length: 1024
+max_prompt_length: 800
+max_completion_length: 1400
 max_steps: -1
 num_generations: 8
 num_train_epochs: 2
@@ -68,7 +68,7 @@ reward_funcs:
 reward_weights:
   - 1.0
 save_strategy: "epoch"
-save_total_limit: 2
+save_total_limit: 1
 seed: 42
 warmup_ratio: 0.1
 

@@ -5,7 +5,7 @@ torch_dtype: bfloat16
 attn_implementation: flash_attention_2
 
 # Data training arguments
-dataset_name: watermelonhjg/MATH-lighteval-level_3
+dataset_name: wzx111/MATH-lighteval-level-middlehigh
 dataset_config: default
 dataset_prompt_column: problem
 dataset_train_split: train

@@ -5,7 +5,7 @@ torch_dtype: bfloat16
 attn_implementation: flash_attention_2
 
 # Data training arguments
-dataset_name: watermelonhjg/MATH-lighteval-level_3
+dataset_name: wzx111/MATH-lighteval-level-middlehigh
 dataset_config: default
 dataset_prompt_column: problem
 dataset_train_split: train
@@ -60,7 +60,6 @@ max_completion_length: 1024
 max_steps: -1
 num_generations: 8
 num_train_epochs: 2
-dataloader_drop_last: true
 output_dir: data/Qwen3-1.7B-Open-R1-GRPO-Server
 overwrite_output_dir: true
 per_device_eval_batch_size: 8

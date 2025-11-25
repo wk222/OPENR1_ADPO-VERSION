@@ -5,7 +5,7 @@ torch_dtype: bfloat16
 attn_implementation: flash_attention_2
 
 # Data training arguments
-dataset_name: watermelonhjg/MATH-lighteval-level_3
+dataset_name: wzx111/MATH-lighteval-level-middlehigh
 dataset_config: default
 dataset_prompt_column: problem
 dataset_train_split: train
@@ -41,7 +41,7 @@ repetition_max_penalty: -1.0
 use_vllm: true
 vllm_mode: colocate
 vllm_enable_sleep_mode: true
-vllm_gpu_memory_utilization: 0.4
+vllm_gpu_memory_utilization: 0.5
 gradient_accumulation_steps: 4
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:

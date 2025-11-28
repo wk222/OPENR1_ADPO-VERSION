@@ -129,12 +129,9 @@ def main(script_args, training_args, model_args):
     #############################
     # Initialize the ADPO trainer
     #############################
-    # DEBUG: Check anchor_update_mode to prevent OOM
-    logger.info(f"🔍 DEBUG: anchor_update_mode = {training_args.anchor_update_mode}")
+    # ADPO now uses on-policy mode only (memory efficient, like GRPO)
     logger.info(f"🔍 DEBUG: beta_anchor_kl = {training_args.beta_anchor_kl}")
-    if training_args.anchor_update_mode != "on_policy":
-        logger.warning(f"⚠️  WARNING: anchor_update_mode='{training_args.anchor_update_mode}' will load a FULL model copy!")
-        logger.warning("⚠️  This will DOUBLE memory usage. Consider setting anchor_update_mode='on_policy'")
+    logger.info(f"🔍 DEBUG: use_adaptive_tau = {training_args.use_adaptive_tau}")
     
     trainer = ADPOTrainer(
         model=model,

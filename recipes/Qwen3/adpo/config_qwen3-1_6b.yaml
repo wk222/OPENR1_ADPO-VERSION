@@ -22,15 +22,15 @@ system_prompt: |
   </answer>
 shuffle_dataset: true
 
-# ADPO trainer config
-anchor_update_mode: on_policy
+# ADPO trainer config (on-policy mode only, memory efficient)
 beta_anchor_kl: 0
+beta: 0.0  # ← 关键！禁用 ref_model，避免加载完整模型副本
 bf16: true
 do_eval: true
-drop_all_failed_prompts: true
+drop_all_failed_prompts: false
 tau: 1.0
 beta_reward: 0.8
-use_q_centering: true
+use_q_centering: false
 use_adaptive_tau: true
 adaptive_tau_alpha: 0.7
 adaptive_tau_min: 0.3
@@ -41,8 +41,8 @@ repetition_max_penalty: -1.0
 use_vllm: true
 vllm_mode: colocate
 vllm_enable_sleep_mode: true
-vllm_gpu_memory_utilization: 0.5
-gradient_accumulation_steps: 4
+vllm_gpu_memory_utilization: 0.4  # ← 降低 vLLM 显存占用
+gradient_accumulation_steps: 8  # ← 增大梯度累积，减少每次 forward 的样本数
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
@@ -55,16 +55,16 @@ logging_first_step: true
 logging_steps: 1
 logging_strategy: steps
 lr_scheduler_type: cosine
-max_prompt_length: 800
-max_completion_length: 1400
+max_prompt_length: 700
+max_completion_length: 1200
 max_steps: -1
-num_generations: 8
+num_generations: 8  # ← 与 GRPO 一致
 num_train_epochs: 2
 dataloader_drop_last: true
 output_dir: data/Qwen3-1.7B-Open-R1-ADPO
 overwrite_output_dir: true
-per_device_eval_batch_size: 8
-per_device_train_batch_size: 8
+per_device_eval_batch_size: 8  # ← 与 GRPO 一致
+per_device_train_batch_size: 8  # ← 与 GRPO 一致
 push_to_hub: true
 report_to:
   - wandb

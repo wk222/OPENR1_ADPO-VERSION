@@ -81,3 +81,4 @@ wandb_project: open-r1-ADPO
 wandb_run_group: qwen3_grpo_server
 wandb_entity: null
 run_name: qwen3-1.7b-grpo-server
+mask_truncated_completions: true 

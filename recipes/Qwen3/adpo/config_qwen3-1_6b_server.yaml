@@ -76,7 +76,7 @@ save_strategy: "epoch"
 save_total_limit: 1
 seed: 42
 warmup_ratio: 0.1
-
+mask_truncated_completions: true 
 # WandB logging
 wandb_project: open-r1-ADPO
 wandb_run_group: qwen3_adpo_server
